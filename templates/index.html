@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Educational Chatbot</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f5f5f5;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+
+        #chat-container {
+            width: 100%;
+            max-width: 600px;
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        #chat-box {
+            padding: 20px;
+            height: 400px;
+            overflow-y: auto;
+            border-bottom: 2px solid #f0f0f0;
+            font-size: 0.9em;
+        }
+
+        #chat-box p {
+            margin: 10px 0;
+        }
+
+        #chat-box .user {
+            color: #007bff;
+            font-weight: bold;
+        }
+
+        #chat-box .bot {
+            color: #28a745;
+            font-weight: bold;
+        }
+
+        #input-container {
+            display: flex;
+            padding: 10px;
+            background-color: #f0f0f0;
+            border-top: 2px solid #f0f0f0;
+        }
+
+        #user-input {
+            flex: 1;
+            padding: 10px;
+            font-size: 1em;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            margin-right: 10px;
+            outline: none;
+        }
+
+        #user-input:focus {
+            border-color: #007bff;
+        }
+
+        #send-button {
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            font-size: 1em;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        #send-button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <h1>Educational Chatbot</h1>
+    <div id="chat-container">
+        <div id="chat-box">
+            <!-- Chat history will be displayed here -->
+        </div>
+        <div id="input-container">
+            <input type="text" id="user-input" placeholder="Type your question here..." autofocus>
+            <button id="send-button" onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <script>
+        async function sendMessage() {
+            const userInput = document.getElementById("user-input").value.trim();
+            const chatBox = document.getElementById("chat-box");
+
+            if (userInput === "") {
+                alert("Please enter a message.");
+                return;
+            }
+
+            // Add the user's message to the chat box
+            chatBox.innerHTML += `<p class="user">Student: ${userInput}</p>`;
+
+            // Clear the input box for better UX
+            document.getElementById("user-input").value = "";
+
+            try {
+                // Send the user input to the backend Flask server
+                const response = await fetch("http://127.0.0.1:5000/chat", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ query: userInput })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // Add the bot's response to the chat box
+                    chatBox.innerHTML += `<p class="bot">Assistant: ${data.response}</p>`;
+                } else {
+                    chatBox.innerHTML += `<p class="bot">Assistant: Error: ${data.error}</p>`;
+                }
+
+                // Scroll to the bottom of the chat box
+                chatBox.scrollTop = chatBox.scrollHeight;
+
+            } catch (error) {
+                console.error("Error:", error);
+                chatBox.innerHTML += `<p class="bot">Assistant: An error occurred while processing your request.</p>`;
+            }
+        }
+
+        // Allow sending messages with the Enter key
+        document.getElementById("user-input").addEventListener("keydown", function(event) {
+            if (event.key === "Enter") {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>
