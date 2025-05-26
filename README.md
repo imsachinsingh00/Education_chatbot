@@ -1,34 +1,71 @@
-# Education Chatbot
+# 🎓 Education Chatbot (Streamlit + Hugging Face)
 
-An educational chatbot web application built with [Flask](https://flask.palletsprojects.com/) and [LangChain](https://github.com/hwchase17/langchain), powered by the **Mistral-7B-Instruct** model on Hugging Face. It provides concise, on-topic answers to students’ questions and even remembers your name!
+A Streamlit-based educational chatbot powered by the `deepseek-ai/DeepSeek-R1` model. It provides intelligent, conversational answers to student queries using the Hugging Face Inference API.
 
----
+## 🚀 Features
 
-## 🔍 Features
+- Clean conversational UI with chat bubbles
+- Real-time question answering
+- Chat history memory during session
+- Tag removal (cleans unwanted <think> tags from model output)
+- Streamlit-based deployment with Hugging Face integration
 
-- **Conversational UI**  
-  A simple chat interface where students can type questions and get instant answers.
-- **Concise Educational Assistance**  
-  Uses a custom prompt to keep responses focused and to-the-point.
-- **Name Memory**  
-  Remembers “My name is X” across sessions by storing it in a local JSON file.
-- **Customizable**  
-  Easily tweak the prompt template, model parameters, or bring your own HF model.
-- **CORS Enabled**  
-  Frontend can be served anywhere (e.g. a static host) and still talk to the Flask API.
+## 📁 Project Structure
 
----
+```
+.
+├── app.py              # Streamlit app logic
+├── .env                # Contains Hugging Face API token
+├── requirements.txt    # Python dependencies
+└── README.md           # Documentation
+```
 
-## 🚀 Getting Started
+## ⚙️ Setup Instructions
 
-### Prerequisites
+1. **Clone the repository**
+```bash
+git clone <repo-url>
+cd Education_chatbot-main
+```
 
-- **Python 3.7+**  
-- **Hugging Face API Token** – Sign up at [huggingface.co](https://huggingface.co/) and create an access token.
+2. **Create virtual environment**
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
 
-### Installation
+3. **Install dependencies**
+```bash
+pip install -r requirements.txt
+```
 
-1. **Clone the repo**
-   ```bash
-   git clone https://github.com/imsachinsingh00/Education_chatbot.git
-   cd Education_chatbot
+4. **Add Hugging Face API key**
+Create a `.env` file in the root directory:
+```
+HUGGINGFACEHUB_API_TOKEN=your_token_here
+```
+
+5. **Run the chatbot**
+```bash
+streamlit run app.py
+```
+
+## 🧠 Model Used
+
+- `deepseek-ai/DeepSeek-R1` (via Hugging Face Inference API)
+
+## 📦 Dependencies
+
+- `streamlit`
+- `huggingface_hub`
+- `python-dotenv`
+- `re`, `os`
+
+## 📝 Notes
+
+- All interaction history is maintained per session.
+- `<think>` tags from model response are removed automatically.
+
+## 📄 License
+
+MIT License.
