@@ -1,119 +1,65 @@
-import json
-from flask import Flask, request, jsonify, render_template
-from langchain_huggingface import HuggingFaceEndpoint
-from langchain.prompts import PromptTemplate
-from langchain.chains import LLMChain
-from dotenv import load_dotenv
 import os
+import re
+import streamlit as st
+from huggingface_hub import InferenceClient
+from dotenv import load_dotenv
 
-from flask_cors import CORS
-
-app = Flask(__name__)
-CORS(app)
-
-# Load environment variables from the .env file
+# Load environment variables
 load_dotenv()
 
-# Get the Hugging Face API key from environment variables
-api_key = os.getenv("HUGGINGFACEHUB_API_TOKEN")
-
-# Initialize the Hugging Face model using the updated import
-llm = HuggingFaceEndpoint(
-    repo_id="mistralai/Mistral-7B-Instruct-v0.2",
-    token=api_key,
-    max_length=50,  # Limit the response length to ensure conciseness.
-    temperature=0.5  # Lower temperature to make the response more direct and less creative.
+# Instantiate the HF Inference client
+client = InferenceClient(
+    provider="auto",
+    api_key=os.environ["HUGGINGFACEHUB_API_TOKEN"]
 )
 
-# Define the JSON file path for storing user information
-USER_INFO_FILE = "user_info.json"
+st.set_page_config(page_title="Educational Chatbot", layout="wide")
+st.title("🎓 Educational Chatbot")
 
-# Function to read user information from the JSON file
-def read_user_info():
-    try:
-        with open(USER_INFO_FILE, "r") as file:
-            data = json.load(file)
-            print(f"DEBUG: Successfully read user info: {data}")
-            return data
-    except FileNotFoundError:
-        print("DEBUG: User info file not found. Returning empty data.")
-        return {}
-    except json.JSONDecodeError:
-        print("DEBUG: JSON decode error occurred. Returning empty data.")
-        return {}
+if "history" not in st.session_state:
+    st.session_state.history = []  # list of (sender, message)
 
-# Function to write user information to the JSON file
-def write_user_info(data):
+def build_messages():
+    return [
+        {"role": "user" if s == "You" else "assistant", "content": m}
+        for s, m in st.session_state.history
+    ]
+
+def clean_think_tags(text: str) -> str:
+    # remove <think>...</think> blocks
+    return re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
+
+# Render chat history
+for sender, msg in st.session_state.history:
+    if sender == "You":
+        st.chat_message("user").write(msg)
+    else:
+        st.chat_message("assistant").write(msg)
+
+# Input
+user_input = st.chat_input("Ask me anything…")
+
+if user_input:
+    # show user turn
+    st.session_state.history.append(("You", user_input))
+    st.chat_message("user").write(user_input)
+
+    # placeholder for assistant
+    placeholder = st.chat_message("assistant")
+    placeholder.write("⏳ Thinking...")
+
+    # call HF chat endpoint with entire history
     try:
-        with open(USER_INFO_FILE, "w") as file:
-            json.dump(data, file)
-            print(f"DEBUG: Successfully wrote user info: {data}")
+        response = client.chat.completions.create(
+            model="deepseek-ai/DeepSeek-R1",
+            messages=build_messages()
+        )
+        raw = response.choices[0].message["content"]
+        # clean out think tags
+        reply = clean_think_tags(raw)
     except Exception as e:
-        print(f"DEBUG: Error writing to user info file: {str(e)}")
+        reply = f"❌ API Error: {e}"
 
-# Create a concise prompt template
-prompt_template = """
-You are an educational assistant. Keep responses concise and only answer the question directly. Avoid unnecessary elaboration or additional examples.
-
-Student: {input}
-Assistant:"""
-prompt = PromptTemplate(input_variables=["input"], template=prompt_template)
-
-# Create an LLMChain with simplified memory handling
-educational_chatbot_chain = LLMChain(
-    llm=llm,
-    prompt=prompt
-)
-
-# Serve the HTML file on the root route
-@app.route("/")
-def index():
-    return render_template("index.html")
-
-# Define a route to handle chat messages
-@app.route("/chat", methods=["POST"])
-def chat():
-    data = request.json
-    user_query = data.get("query", "").strip().lower()
-
-    if not user_query:
-        return jsonify({"error": "No query provided"}), 400
-
-    try:
-        # Load existing user information
-        user_info = read_user_info()
-
-        # Check if user provides their name
-        if "my name is" in user_query:
-            # Extract the name from the query
-            user_name = user_query.split("my name is")[-1].strip()
-            # Store the name in the user_info dictionary and save it to the JSON file
-            user_info["user_name"] = user_name
-            write_user_info(user_info)
-            response = f"Hello {user_name}! Nice to meet you."
-
-        elif "what is my name" in user_query or "do you know my name" in user_query:
-            # Retrieve the name from user_info if available
-            user_name = user_info.get("user_name", None)
-            if user_name:
-                response = f"Your name is {user_name}."
-            else:
-                response = "I'm sorry, I don't have that information. You haven't shared it with me in our conversation yet."
-
-        else:
-            # Use the LLMChain to generate a response for general queries
-            response = educational_chatbot_chain.predict(input=user_query)
-
-        # Log the generated response for debugging
-        print(f"Generated response: {response}")
-
-        return jsonify({"response": response})
-
-    except Exception as e:
-        # Log any errors that occur
-        print(f"Error occurred: {str(e)}")
-        return jsonify({"error": "Something went wrong while processing the request."}), 500
-
-# Run the Flask server
-if __name__ == "__main__":
-    app.run(port=5000, debug=True)
+    # display and store cleaned reply
+    placeholder.write(reply)
+    st.session_state.history.append(("Bot", reply))
